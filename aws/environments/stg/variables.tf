@@ -1,3 +1,9 @@
+variable "region" {
+  description = "AWS region for this environment"
+  type        = string
+  default     = "us-west-2"
+}
+
 # -----------------------------------------------------------------------------
 # Staging Environment Variables
 # Staging mirrors production topology at reduced scale.

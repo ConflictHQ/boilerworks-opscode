@@ -3,19 +3,16 @@
 # -----------------------------------------------------------------------------
 
 terraform {
-  backend "s3" {
-    encrypt        = true
-    bucket         = "tf-state.boilerworks.net"
-    dynamodb_table = "boilerworks-tfstate-lock"
-    key            = "aws/stg/terraform.tfstate"
-    region         = "us-west-2"
-  }
+  # Backend configured via -backend-config at init time.
+  # See aws/config.env for project/region settings.
+  # Run: ./run.sh init aws stg
+  backend "s3" {}
 }
 
 locals {
   name         = "stg-boilerworks"
   env          = "staging"
-  region       = "us-west-2"
+  region       = var.region
   service_name = "boilerworks"
   owner        = "conflict"
   ver          = "1.0"

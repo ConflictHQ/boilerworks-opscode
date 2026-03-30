@@ -2,17 +2,17 @@
 # -----------------------------------------------------------------------------
 # Boilerworks — First-Time Infrastructure Bootstrap
 #
-# Creates the Terraform state backend (S3 + DynamoDB), then initializes
-# all three environments so they're ready for plan/apply.
+# Creates a Terraform state backend (S3 + DynamoDB) per environment, then
+# initializes each one. Supports multi-account / AWS Organizations.
 #
 # Usage:
-#   ./aws/scripts/bootstrap.sh [region]
+#   ./aws/scripts/bootstrap.sh <dev|stg|prd|all>
 #
-# What it does:
-#   1. Preflight checks (terraform, aws cli, credentials)
-#   2. Create S3 bucket + DynamoDB table for state
-#   3. terraform init for dev, stg, and prd
-#   4. Print next steps
+# Configuration is read from aws/config.env (PROJECT, AWS_REGION, OWNER).
+#
+# For multi-account setups, switch AWS_PROFILE between runs:
+#   AWS_PROFILE=myproject-dev-infra ./aws/scripts/bootstrap.sh dev
+#   AWS_PROFILE=myproject-prd-infra ./aws/scripts/bootstrap.sh prd
 # -----------------------------------------------------------------------------
 
 set -euo pipefail
@@ -23,28 +23,40 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-REGION="${1:-us-west-2}"
+TARGET="${1:?Usage: bootstrap.sh <dev|stg|prd|all>}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AWS_DIR="${SCRIPT_DIR}/.."
-TF_BACKEND_DIR="${AWS_DIR}/tf-backend"
-ENVIRONMENTS=("dev" "stg" "prd")
+CONFIG_FILE="${AWS_DIR}/config.env"
+TF_BACKEND_MODULE="${AWS_DIR}/modules/tf-backend-bootstrap"
 
 info()    { echo -e "${BLUE}[INFO]${NC} $*"; }
 success() { echo -e "${GREEN}[OK]${NC} $*"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error()   { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
+# Load config
+[[ -f "${CONFIG_FILE}" ]] || error "Config not found: ${CONFIG_FILE}"
+# shellcheck source=/dev/null
+source "${CONFIG_FILE}"
+
+info "Config: PROJECT=${PROJECT} REGION=${AWS_REGION} OWNER=${OWNER}"
+
+# Resolve environment list
+if [[ "${TARGET}" == "all" ]]; then
+  ENVIRONMENTS=("dev" "stg" "prd")
+else
+  [[ "${TARGET}" =~ ^(dev|stg|prd)$ ]] || error "Invalid environment: ${TARGET}. Must be dev, stg, prd, or all."
+  ENVIRONMENTS=("${TARGET}")
+fi
+
 # -----------------------------------------------------------------------------
-# Preflight checks
+# Preflight
 # -----------------------------------------------------------------------------
 
 info "Running preflight checks..."
-
 command -v terraform >/dev/null 2>&1 || error "terraform is not installed"
 command -v aws >/dev/null 2>&1 || error "aws CLI is not installed"
-
-TF_VERSION=$(terraform version -json 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['terraform_version'])" 2>/dev/null || terraform version | head -1 | grep -oE '[0-9]+\.[0-9]+')
-info "Terraform version: ${TF_VERSION}"
 
 info "Verifying AWS credentials..."
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null) \
@@ -52,53 +64,65 @@ AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/de
 success "Authenticated as account ${AWS_ACCOUNT_ID}"
 
 # -----------------------------------------------------------------------------
-# Step 1: Create Terraform state backend
+# Bootstrap each environment
 # -----------------------------------------------------------------------------
-
-echo ""
-info "=== Step 1/2: Terraform State Backend ==="
-info "Creating S3 bucket + DynamoDB table in ${REGION}..."
-
-cd "${TF_BACKEND_DIR}"
-
-terraform init -input=false
-
-terraform apply \
-  -var="region=${REGION}" \
-  -auto-approve \
-  -input=false
-
-BUCKET_NAME=$(terraform output -raw bucket_name)
-TABLE_NAME=$(terraform output -raw dynamodb_table_name)
-
-success "State backend created:"
-echo "  S3 Bucket:      ${BUCKET_NAME}"
-echo "  DynamoDB Table:  ${TABLE_NAME}"
-echo "  Region:          ${REGION}"
-
-# -----------------------------------------------------------------------------
-# Step 2: Initialize all environments
-# -----------------------------------------------------------------------------
-
-echo ""
-info "=== Step 2/2: Initialize Environments ==="
-
-INIT_FAILURES=()
 
 for ENV in "${ENVIRONMENTS[@]}"; do
+  echo ""
+  info "========================================="
+  info "Bootstrapping: ${ENV} (account ${AWS_ACCOUNT_ID}, region ${AWS_REGION})"
+  info "========================================="
+
+  ENV_PROJECT="${PROJECT}-${ENV}"
   ENV_DIR="${AWS_DIR}/environments/${ENV}"
 
-  if [[ ! -d "${ENV_DIR}" ]]; then
-    warn "Environment directory not found: ${ENV} (skipping)"
-    continue
-  fi
+  [[ -d "${ENV_DIR}" ]] || { warn "Environment directory not found: ${ENV_DIR} (skipping)"; continue; }
 
-  info "Initializing ${ENV}..."
-  if terraform -chdir="${ENV_DIR}" init -input=false >/dev/null 2>&1; then
-    success "  ${ENV} initialized"
+  # --- Create state backend ---
+  info "Creating state backend: tf-state.${ENV_PROJECT}.net"
+
+  WORK_DIR=$(mktemp -d)
+
+  cat > "${WORK_DIR}/main.tf" << EOF
+module "backend" {
+  source       = "${TF_BACKEND_MODULE}"
+  project_name = "${ENV_PROJECT}"
+  region       = "${AWS_REGION}"
+  tags = {
+    Service     = "${PROJECT}"
+    Environment = "${ENV}"
+    Owner       = "${OWNER}"
+    ManagedBy   = "terraform"
+  }
+}
+output "bucket_name" { value = module.backend.bucket_name }
+output "table_name"  { value = module.backend.dynamodb_table_name }
+EOF
+
+  terraform -chdir="${WORK_DIR}" init -input=false >/dev/null 2>&1
+  terraform -chdir="${WORK_DIR}" apply -auto-approve -input=false
+
+  BUCKET=$(terraform -chdir="${WORK_DIR}" output -raw bucket_name)
+  TABLE=$(terraform -chdir="${WORK_DIR}" output -raw table_name)
+
+  rm -rf "${WORK_DIR}"
+
+  success "State backend for ${ENV}:"
+  echo "  S3 Bucket:       ${BUCKET}"
+  echo "  DynamoDB Table:  ${TABLE}"
+  echo "  Region:          ${AWS_REGION}"
+
+  # --- Initialize environment ---
+  info "Initializing ${ENV} environment..."
+  if terraform -chdir="${ENV_DIR}" init -input=false \
+    -backend-config="bucket=${BUCKET}" \
+    -backend-config="dynamodb_table=${TABLE}" \
+    -backend-config="key=terraform.tfstate" \
+    -backend-config="region=${AWS_REGION}" \
+    -backend-config="encrypt=true" >/dev/null 2>&1; then
+    success "${ENV} initialized"
   else
-    warn "  ${ENV} init failed (may need backend credentials for this account)"
-    INIT_FAILURES+=("${ENV}")
+    warn "${ENV} init failed — check backend config"
   fi
 done
 
@@ -108,28 +132,12 @@ done
 
 echo ""
 echo "============================================"
-
-if [[ ${#INIT_FAILURES[@]} -eq 0 ]]; then
-  success "Bootstrap complete. All environments initialized."
-else
-  warn "Bootstrap complete with warnings."
-  warn "Failed to init: ${INIT_FAILURES[*]}"
-  echo "  This is normal if environments use different AWS accounts."
-  echo "  Run './run.sh init aws <env>' manually with the correct credentials."
-fi
-
+success "Bootstrap complete for: ${ENVIRONMENTS[*]}"
 echo ""
 info "Next steps:"
 echo ""
-echo "  1. Review the dev plan:"
-echo "     ./run.sh plan aws dev"
-echo ""
-echo "  2. Apply dev when ready:"
-echo "     ./run.sh apply aws dev"
-echo ""
-echo "  3. Verify deployment:"
-echo "     ./aws/scripts/cold-boot.sh dev"
-echo ""
-echo "  Repeat for stg and prd when ready."
+for ENV in "${ENVIRONMENTS[@]}"; do
+  echo "  ./run.sh plan aws ${ENV}"
+done
 echo ""
 success "Done."

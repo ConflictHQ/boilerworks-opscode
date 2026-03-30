@@ -1,0 +1,272 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Boilerworks — Infrastructure IAM User
+
+  Creates a dedicated IAM user for Terraform operations. This user gets
+  programmatic access (access key) and the permissions needed to provision
+  and manage all Boilerworks infrastructure.
+
+  Run this ONCE per AWS account before bootstrapping Terraform.
+
+  Usage:
+    aws cloudformation deploy \
+      --template-file infra-user.yml \
+      --stack-name boilerworks-infra-user \
+      --parameter-overrides ProjectSlug=boilerworks \
+      --capabilities CAPABILITY_NAMED_IAM
+
+  Then configure your local AWS profile:
+    aws configure --profile boilerworks-infra
+    # Enter the AccessKeyId and SecretAccessKey from stack outputs
+
+Parameters:
+  ProjectSlug:
+    Type: String
+    Default: boilerworks
+    Description: Project slug used for naming (lowercase, alphanumeric, hyphens)
+    AllowedPattern: '^[a-z0-9-]+$'
+    ConstraintDescription: Must be lowercase alphanumeric with hyphens
+
+Resources:
+  # ---------------------------------------------------------------------------
+  # IAM User — {slug}-infra
+  # ---------------------------------------------------------------------------
+  InfraUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Sub '${ProjectSlug}-infra'
+      Tags:
+        - Key: Service
+          Value: !Ref ProjectSlug
+        - Key: Purpose
+          Value: infrastructure-automation
+        - Key: ManagedBy
+          Value: cloudformation
+
+  # ---------------------------------------------------------------------------
+  # Access Key — programmatic access for Terraform
+  # ---------------------------------------------------------------------------
+  InfraUserAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref InfraUser
+
+  # ---------------------------------------------------------------------------
+  # IAM Policy — infrastructure provisioning permissions
+  #
+  # Scoped to what Terraform needs: VPC, ECS, EKS, RDS, ElastiCache, S3,
+  # Route53, ACM, ALB, CloudWatch, Secrets Manager, IAM (pass-role + create),
+  # STS, and state backend (S3 + DynamoDB).
+  # ---------------------------------------------------------------------------
+  InfraPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub '${ProjectSlug}-infra-policy'
+      Description: !Sub 'Terraform provisioning permissions for ${ProjectSlug}'
+      Users:
+        - !Ref InfraUser
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # Terraform state backend
+          - Sid: TerraformState
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:ListBucket
+              - s3:GetBucketVersioning
+              - s3:GetBucketLocation
+            Resource:
+              - !Sub 'arn:aws:s3:::tf-state.${ProjectSlug}.net'
+              - !Sub 'arn:aws:s3:::tf-state.${ProjectSlug}.net/*'
+          - Sid: TerraformLock
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+            Resource:
+              - !Sub 'arn:aws:dynamodb:*:${AWS::AccountId}:table/${ProjectSlug}-tfstate-lock'
+
+          # VPC + Networking
+          - Sid: Networking
+            Effect: Allow
+            Action:
+              - ec2:*
+            Resource: '*'
+
+          # ECS
+          - Sid: ECS
+            Effect: Allow
+            Action:
+              - ecs:*
+              - ecr:*
+            Resource: '*'
+
+          # EKS
+          - Sid: EKS
+            Effect: Allow
+            Action:
+              - eks:*
+            Resource: '*'
+
+          # RDS
+          - Sid: RDS
+            Effect: Allow
+            Action:
+              - rds:*
+            Resource: '*'
+
+          # ElastiCache
+          - Sid: ElastiCache
+            Effect: Allow
+            Action:
+              - elasticache:*
+            Resource: '*'
+
+          # S3 (application buckets)
+          - Sid: S3
+            Effect: Allow
+            Action:
+              - s3:*
+            Resource: '*'
+
+          # Load Balancing
+          - Sid: ELB
+            Effect: Allow
+            Action:
+              - elasticloadbalancing:*
+            Resource: '*'
+
+          # Route53
+          - Sid: Route53
+            Effect: Allow
+            Action:
+              - route53:*
+              - route53domains:*
+            Resource: '*'
+
+          # ACM
+          - Sid: ACM
+            Effect: Allow
+            Action:
+              - acm:*
+            Resource: '*'
+
+          # CloudWatch + SNS
+          - Sid: Observability
+            Effect: Allow
+            Action:
+              - cloudwatch:*
+              - logs:*
+              - sns:*
+            Resource: '*'
+
+          # Secrets Manager
+          - Sid: Secrets
+            Effect: Allow
+            Action:
+              - secretsmanager:*
+            Resource: '*'
+
+          # IAM — create roles, policies, instance profiles for ECS/EKS
+          - Sid: IAM
+            Effect: Allow
+            Action:
+              - iam:GetRole
+              - iam:GetPolicy
+              - iam:GetPolicyVersion
+              - iam:GetInstanceProfile
+              - iam:GetOpenIDConnectProvider
+              - iam:GetUser
+              - iam:CreateRole
+              - iam:CreatePolicy
+              - iam:CreatePolicyVersion
+              - iam:CreateInstanceProfile
+              - iam:CreateOpenIDConnectProvider
+              - iam:CreateServiceLinkedRole
+              - iam:DeleteRole
+              - iam:DeletePolicy
+              - iam:DeletePolicyVersion
+              - iam:DeleteInstanceProfile
+              - iam:DeleteOpenIDConnectProvider
+              - iam:DeleteRolePolicy
+              - iam:UpdateRole
+              - iam:UpdateAssumeRolePolicy
+              - iam:AttachRolePolicy
+              - iam:DetachRolePolicy
+              - iam:PutRolePolicy
+              - iam:PassRole
+              - iam:TagRole
+              - iam:TagPolicy
+              - iam:UntagRole
+              - iam:UntagPolicy
+              - iam:ListRolePolicies
+              - iam:ListAttachedRolePolicies
+              - iam:ListPolicyVersions
+              - iam:ListInstanceProfilesForRole
+              - iam:AddRoleToInstanceProfile
+              - iam:RemoveRoleFromInstanceProfile
+              - iam:ListOpenIDConnectProviders
+              - iam:ListOpenIDConnectProviderTags
+              - iam:TagOpenIDConnectProvider
+              - iam:UntagOpenIDConnectProvider
+              - iam:UpdateOpenIDConnectProviderThumbprint
+            Resource: '*'
+
+          # STS — for assuming roles, caller identity
+          - Sid: STS
+            Effect: Allow
+            Action:
+              - sts:GetCallerIdentity
+              - sts:AssumeRole
+            Resource: '*'
+
+          # KMS — for EKS EBS encryption, EFS encryption
+          - Sid: KMS
+            Effect: Allow
+            Action:
+              - kms:*
+            Resource: '*'
+
+          # EFS — for EKS persistent storage
+          - Sid: EFS
+            Effect: Allow
+            Action:
+              - elasticfilesystem:*
+            Resource: '*'
+
+          # Auto Scaling — for ECS/EKS
+          - Sid: AutoScaling
+            Effect: Allow
+            Action:
+              - application-autoscaling:*
+              - autoscaling:*
+            Resource: '*'
+
+          # SES — for application email
+          - Sid: SES
+            Effect: Allow
+            Action:
+              - ses:*
+            Resource: '*'
+
+Outputs:
+  UserName:
+    Description: IAM user name — use as your AWS profile
+    Value: !Ref InfraUser
+
+  UserArn:
+    Description: IAM user ARN — reference in Terraform
+    Value: !GetAtt InfraUser.Arn
+
+  AccessKeyId:
+    Description: Access key ID — use with 'aws configure --profile'
+    Value: !Ref InfraUserAccessKey
+
+  SecretAccessKey:
+    Description: Secret access key — SAVE THIS, it cannot be retrieved again
+    Value: !GetAtt InfraUserAccessKey.SecretAccessKey

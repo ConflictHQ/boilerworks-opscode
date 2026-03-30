@@ -8,8 +8,12 @@
 #   ./run.sh apply aws dev        # terraform apply
 #   ./run.sh destroy aws dev      # terraform destroy
 #   ./run.sh fmt                  # format all .tf files
-#   ./run.sh validate             # validate all directories
-#   ./run.sh bootstrap aws        # first-time tf-backend setup
+#   ./run.sh validate             # validate all terraform directories
+#   ./run.sh bootstrap aws dev    # first-time backend + init for dev
+#   ./run.sh bootstrap aws all    # bootstrap all environments
+#
+# Configuration:
+#   Edit aws/config.env to set PROJECT, AWS_REGION, and OWNER.
 # -----------------------------------------------------------------------------
 
 set -euo pipefail
@@ -27,20 +31,51 @@ success() { echo -e "${GREEN}[OK]${NC} $*"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error()   { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
+# -----------------------------------------------------------------------------
+# Load config
+# -----------------------------------------------------------------------------
+
+load_config() {
+  local cloud="${1:-aws}"
+  local config_file="${SCRIPT_DIR}/${cloud}/config.env"
+
+  if [[ -f "${config_file}" ]]; then
+    # shellcheck source=/dev/null
+    source "${config_file}"
+  else
+    warn "Config file not found: ${config_file} — using defaults"
+    PROJECT="${PROJECT:-boilerworks}"
+    AWS_REGION="${AWS_REGION:-us-west-2}"
+    OWNER="${OWNER:-conflict}"
+  fi
+}
+
+# Backend config flags for a given environment
+backend_config_flags() {
+  local env="${1}"
+  echo "-backend-config=bucket=tf-state.${PROJECT}-${env}.net"
+  echo "-backend-config=dynamodb_table=${PROJECT}-${env}-tfstate-lock"
+  echo "-backend-config=key=terraform.tfstate"
+  echo "-backend-config=region=${AWS_REGION}"
+  echo "-backend-config=encrypt=true"
+}
+
 usage() {
   echo "Usage: ./run.sh <command> [cloud] [environment]"
   echo ""
   echo "Commands:"
-  echo "  init <cloud> <env>       terraform init"
-  echo "  plan <cloud> <env>       terraform plan"
-  echo "  apply <cloud> <env>      terraform apply"
-  echo "  destroy <cloud> <env>    terraform destroy"
-  echo "  fmt                      format all .tf files"
-  echo "  validate                 validate all terraform directories"
-  echo "  bootstrap <cloud>        first-time state backend setup"
+  echo "  init <cloud> <env>           terraform init (configures backend)"
+  echo "  plan <cloud> <env>           terraform plan"
+  echo "  apply <cloud> <env>          terraform apply"
+  echo "  destroy <cloud> <env>        terraform destroy"
+  echo "  fmt                          format all .tf files"
+  echo "  validate                     validate all terraform directories"
+  echo "  bootstrap <cloud> <env|all>  create state backend + init"
   echo ""
   echo "Cloud:       aws | gcp | azure"
-  echo "Environment: dev | stg | prd"
+  echo "Environment: dev | stg | prd | all (bootstrap only)"
+  echo ""
+  echo "Configuration: edit aws/config.env"
   exit 1
 }
 
@@ -64,8 +99,13 @@ cmd_init() {
   local dir
   dir=$(resolve_dir "${cloud}" "${env}")
 
+  load_config "${cloud}"
+
   info "Initializing ${cloud}/${env}..."
-  terraform -chdir="${dir}" init -input=false
+  # shellcheck disable=SC2046
+  terraform -chdir="${dir}" init \
+    -input=false \
+    $(backend_config_flags "${env}")
   success "Init complete: ${cloud}/${env}"
 }
 
@@ -75,8 +115,10 @@ cmd_plan() {
   local dir
   dir=$(resolve_dir "${cloud}" "${env}")
 
+  load_config "${cloud}"
+
   info "Planning ${cloud}/${env}..."
-  terraform -chdir="${dir}" plan -input=false
+  terraform -chdir="${dir}" plan -input=false -var="region=${AWS_REGION}"
   success "Plan complete: ${cloud}/${env}"
 }
 
@@ -86,8 +128,10 @@ cmd_apply() {
   local dir
   dir=$(resolve_dir "${cloud}" "${env}")
 
+  load_config "${cloud}"
+
   info "Applying ${cloud}/${env}..."
-  terraform -chdir="${dir}" apply -input=false
+  terraform -chdir="${dir}" apply -input=false -var="region=${AWS_REGION}"
   success "Apply complete: ${cloud}/${env}"
 }
 
@@ -97,8 +141,10 @@ cmd_destroy() {
   local dir
   dir=$(resolve_dir "${cloud}" "${env}")
 
+  load_config "${cloud}"
+
   warn "Destroying ${cloud}/${env}..."
-  terraform -chdir="${dir}" destroy -input=false
+  terraform -chdir="${dir}" destroy -input=false -var="region=${AWS_REGION}"
   success "Destroy complete: ${cloud}/${env}"
 }
 
@@ -113,17 +159,14 @@ cmd_validate() {
 
   info "Validating all Terraform directories..."
 
-  # Find all directories containing .tf files
   while IFS= read -r dir; do
     local tf_dir
     tf_dir=$(dirname "${dir}")
 
-    # Skip .terraform directories
     [[ "${tf_dir}" == *".terraform"* ]] && continue
 
     info "Validating ${tf_dir#${SCRIPT_DIR}/}..."
 
-    # Init if needed (backend=false for validation only)
     if [[ ! -d "${tf_dir}/.terraform" ]]; then
       terraform -chdir="${tf_dir}" init -backend=false -input=false >/dev/null 2>&1 || true
     fi
@@ -146,10 +189,11 @@ cmd_validate() {
 
 cmd_bootstrap() {
   local cloud="${1:?Missing cloud argument}"
+  local env="${2:?Missing environment argument}"
 
   case "${cloud}" in
     aws)
-      "${SCRIPT_DIR}/aws/scripts/bootstrap.sh"
+      "${SCRIPT_DIR}/aws/scripts/bootstrap.sh" "${env}"
       ;;
     *)
       error "Bootstrap is currently only supported for AWS"

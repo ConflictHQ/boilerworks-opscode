@@ -1,3 +1,9 @@
+variable "region" {
+  description = "AWS region for this environment"
+  type        = string
+  default     = "us-west-2"
+}
+
 # -----------------------------------------------------------------------------
 # Production Environment Variables
 # Override defaults via terraform.tfvars or -var flags.
