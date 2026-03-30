@@ -1,0 +1,13 @@
+# metrics-server — Azure
+# AKS includes metrics-server by default.
+# Only install this if the managed addon is disabled.
+
+replicas: 1
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi

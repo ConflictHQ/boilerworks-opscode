@@ -1,0 +1,27 @@
+# AWS Load Balancer Controller — EKS
+# Manages ALB/NLB via Kubernetes Ingress and Service annotations.
+#
+# Requires: IRSA role ARN from terraform output (eks module)
+# Override: --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=<ARN>
+
+clusterName: "" # Set via --set clusterName=<cluster-name>
+
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+  annotations:
+    eks.amazonaws.com/role-arn: "" # Set via --set
+
+replicaCount: 1 # 2 for production
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+enableShield: false
+enableWaf: false
+enableWafv2: false

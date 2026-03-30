@@ -1,0 +1,13 @@
+# metrics-server — GCP
+# GKE Autopilot includes metrics-server by default.
+# Only install this on Standard GKE clusters.
+
+replicas: 1
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
