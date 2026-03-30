@@ -1,4 +1,4 @@
-# CLAUDE.md
+# GEMINI.md
 
 All infrastructure topology, Terraform structure, and operational context live in **[`bootstrap.md`](./bootstrap.md)**.
 
@@ -16,7 +16,6 @@ Read `bootstrap.md` before working on this codebase. It contains:
 - **No co-authorship messages in commits**
 - **No rebases**
 - All CLI commands: respect `AWS_PROFILE` per environment
-- Push with SSH: `git push origin main`
 
 ## Conventions
 
@@ -32,9 +31,9 @@ Read `bootstrap.md` before working on this codebase. It contains:
 
 ## Container Runtime Pattern
 
-`container_runtime.tf` loads `ecs/` and/or `eks/` submodules via boolean flags. Each runtime is self-contained (own ALB, SGs, IAM, logs, DNS). Shared infra (VPC, RDS, Redis, S3) stays at the environment root.
+`container_runtime.tf` loads `ecs/` and/or `eks/` submodules via boolean flags (`enable_ecs`, `enable_eks`). Each runtime is self-contained with its own ALB, security groups, IAM roles, log groups, and DNS records. Shared infrastructure (VPC, RDS, Redis, S3) stays at the environment root.
 
-To add a service: copy a module block in `container_runtime.tf`, rename, adjust inputs. Declarative, not DRY.
+To add a service: copy a module block in `container_runtime.tf`, rename it, adjust inputs. The pattern is declarative — copy-paste-modify, not DRY abstractions.
 
 ## Do Not
 

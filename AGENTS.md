@@ -1,51 +1,62 @@
 # Boilerworks Opscode — Agent Configuration
 
+## Agent Shims
+
+Each AI coding agent has its own entry point that follows the same pattern: read `bootstrap.md` first, then follow the conventions.
+
+| Agent | Shim File | Notes |
+|-------|-----------|-------|
+| Claude | `CLAUDE.md` | Read by Claude Code, Cursor, Windsurf |
+| Gemini | `GEMINI.md` | Read by Gemini in IDEs, Jules |
+| Codex | `CODEX.md` | Read by OpenAI Codex, ChatGPT, Copilot Workspace |
+
+All shims point to `bootstrap.md` as the single source of truth for infrastructure context.
+
+## Conventions (all agents)
+
+- Read `bootstrap.md` before any work
+- No co-authorship messages in commits
+- No rebases
+- `terraform fmt` before every commit
+- `terraform validate` must pass
+- Tags on every resource
+- No hardcoded account IDs or secrets
+- Declarative over DRY — copy module blocks, don't abstract
+
 ## Agent Roles
 
 ### Infrastructure Agent
 
-**Purpose:** Create, modify, and manage Terraform infrastructure definitions.
+**Purpose:** Create, modify, and manage Terraform infrastructure.
 
-**Capabilities:**
-- Read and modify `.tf` files across all cloud providers
+**Can do:**
+- Read and modify `.tf` files
 - Run `terraform fmt`, `terraform validate`, `terraform plan`
 - Create new modules following existing patterns
-- Add resources to existing environments
+- Copy module blocks in `container_runtime.tf` to add services
 
-**Constraints:**
-- Never run `terraform apply` or `terraform destroy` without explicit human approval
-- Never hardcode AWS account IDs, secrets, or credentials
-- Always add tags to every resource
-- Always run `terraform fmt` after modifying `.tf` files
-- Always run `terraform validate` after structural changes
-
-**Entry Points:**
-- `CLAUDE.md` — conventions and quick reference
-- `bootstrap.md` — full infrastructure topology
-- `BUILD_SPEC.md` — original build specification
+**Must not:**
+- Run `terraform apply` or `terraform destroy` without explicit approval
+- Modify production without explicit instruction
+- Hardcode AWS account IDs, secrets, or credentials
 
 ### Operations Agent
 
 **Purpose:** Execute infrastructure operations and verify deployments.
 
-**Capabilities:**
-- Run `./run.sh` commands for init, plan, apply
+**Can do:**
+- Run `./run.sh` commands (init, plan, apply)
 - Execute bootstrap and cold-boot scripts
 - Check AWS resource status via CLI
 - Verify health endpoints
 
-**Constraints:**
-- Never apply to production without explicit approval
-- Always plan before apply
-- Always run cold-boot verification after apply
+**Must not:**
+- Apply to production without explicit approval
+- Skip `terraform plan` before `terraform apply`
 
-## Context Loading
+## Context Loading Order
 
-When working on this repo, agents should read in this order:
-
-1. `CLAUDE.md` — conventions and rules
-2. `bootstrap.md` — infrastructure topology
-3. The specific files being modified
-4. Reference implementations if patterns are unclear:
-   - `/tmp/calliope-opscode/` — Calliope patterns
-   - `/tmp/veracall-omni/infrastructure/` — Veracall patterns
+1. `CLAUDE.md` / `GEMINI.md` / `CODEX.md` — agent-specific conventions
+2. `bootstrap.md` — full infrastructure topology and setup guide
+3. `aws/config.env` — project configuration
+4. The specific files being modified
