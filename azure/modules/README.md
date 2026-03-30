@@ -1,4 +1,4 @@
-# Azure Modules — Coming Soon
+# Azure Modules — Experimental
 
 Planned modules for Azure infrastructure:
 

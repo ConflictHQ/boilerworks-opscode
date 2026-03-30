@@ -1,4 +1,4 @@
-# GCP Modules — Coming Soon
+# GCP Modules — Experimental
 
 Planned modules for GCP infrastructure:
 
