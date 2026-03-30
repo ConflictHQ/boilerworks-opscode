@@ -1,0 +1,23 @@
+# Envoy Gateway — Azure
+# Gateway API implementation for AKS.
+#
+# AKS also supports Application Gateway for Containers as a native Gateway API
+# provider. Use that for production external traffic and Envoy Gateway for
+# internal/mesh routing.
+#
+# https://gateway-api.sigs.k8s.io/
+# https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/overview
+
+config:
+  envoyGateway:
+    logging:
+      level:
+        default: info
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi

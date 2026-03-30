@@ -1,0 +1,74 @@
+# argo-cd — GCP
+# GitOps continuous delivery. Minimal single-replica install for dev.
+# TLS is terminated at the load balancer — server runs in insecure mode.
+
+global:
+  image:
+    tag: "" # Pin a specific version for reproducibility
+
+server:
+  replicas: 1
+  extraArgs:
+    - --insecure # TLS terminated at GCP LB
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  service:
+    type: ClusterIP
+
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+repoServer:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+redis:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+dex:
+  enabled: false
+
+notifications:
+  enabled: false
+
+applicationSet:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+configs:
+  params:
+    server.insecure: true
+  # repositories:
+  #   my-repo:
+  #     url: https://github.com/your-org/your-repo.git
+  #     type: git

@@ -1,0 +1,40 @@
+# Fluent Bit — AWS
+# CNCF standard log collector. Ships logs to Loki.
+# https://docs.fluentbit.io/manual
+
+config:
+  outputs: |
+    [OUTPUT]
+        Name        loki
+        Match       kube.*
+        Host        loki.loki.svc.cluster.local
+        Port        3100
+        Labels      job=fluent-bit, namespace=$kubernetes['namespace_name'], pod=$kubernetes['pod_name']
+        Auto_Kubernetes_Labels on
+
+    [OUTPUT]
+        Name        loki
+        Match       host.*
+        Host        loki.loki.svc.cluster.local
+        Port        3100
+        Labels      job=fluent-bit-node
+
+  # Optional: also ship to CloudWatch
+  # [OUTPUT]
+  #     Name                cloudwatch_logs
+  #     Match               kube.*
+  #     region              us-west-2
+  #     log_group_name      /aws/eks/${CLUSTER_NAME}/fluent-bit
+  #     log_stream_prefix   from-fluent-bit-
+  #     auto_create_group   true
+
+tolerations:
+  - operator: Exists
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi

@@ -1,0 +1,42 @@
+# external-dns — Azure
+# Auto-creates Azure DNS records from Kubernetes Ingress/Service resources.
+
+provider: azure
+
+# Limit to specific hosted zones (optional — leave empty for all zones)
+# domainFilters:
+#   - yourdomain.com
+
+txtOwnerId: "boilerworks-dev" # Unique per cluster to avoid record conflicts
+
+policy: upsert-only # "sync" will delete orphaned records — use with caution
+
+sources:
+  - ingress
+  - service
+
+serviceAccount:
+  create: true
+  name: external-dns
+  annotations:
+    azure.workload.identity/client-id: "" # Managed identity client ID with DNS Zone Contributor role
+
+podLabels:
+  azure.workload.identity/use: "true"
+
+# Azure-specific config — these can also be supplied via a mounted azure.json
+# extraArgs:
+#   - --azure-subscription-id=your-subscription-id
+#   - --azure-resource-group=your-rg
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: 50m
+    memory: 128Mi
+
+interval: 1m
+
+logLevel: info

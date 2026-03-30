@@ -1,0 +1,38 @@
+# external-dns — GCP
+# Auto-creates Cloud DNS records from Kubernetes Ingress/Service resources.
+
+provider: google
+
+# GCP project that owns the Cloud DNS zone
+# google:
+#   project: your-gcp-project
+
+# Limit to specific hosted zones (optional — leave empty for all zones)
+# domainFilters:
+#   - yourdomain.com
+
+txtOwnerId: "boilerworks-dev" # Unique per cluster to avoid record conflicts
+
+policy: upsert-only # "sync" will delete orphaned records — use with caution
+
+sources:
+  - ingress
+  - service
+
+serviceAccount:
+  create: true
+  name: external-dns
+  annotations:
+    iam.gke.io/gcp-service-account: "" # GCP SA with DNS Admin role
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: 50m
+    memory: 128Mi
+
+interval: 1m
+
+logLevel: info

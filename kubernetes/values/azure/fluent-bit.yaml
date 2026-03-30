@@ -1,0 +1,38 @@
+# Fluent Bit — Azure
+# CNCF standard log collector. Ships logs to Loki.
+# https://docs.fluentbit.io/manual
+
+config:
+  outputs: |
+    [OUTPUT]
+        Name        loki
+        Match       kube.*
+        Host        loki.loki.svc.cluster.local
+        Port        3100
+        Labels      job=fluent-bit, namespace=$kubernetes['namespace_name'], pod=$kubernetes['pod_name']
+        Auto_Kubernetes_Labels on
+
+    [OUTPUT]
+        Name        loki
+        Match       host.*
+        Host        loki.loki.svc.cluster.local
+        Port        3100
+        Labels      job=fluent-bit-node
+
+  # Optional: also ship to Azure Monitor
+  # [OUTPUT]
+  #     Name        azure
+  #     Match       kube.*
+  #     Customer_ID ${LOG_ANALYTICS_WORKSPACE_ID}
+  #     Shared_Key  ${LOG_ANALYTICS_SHARED_KEY}
+
+tolerations:
+  - operator: Exists
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi

@@ -8,11 +8,18 @@ Opinionated base platform for Boilerworks Kubernetes clusters (EKS, GKE, AKS). I
 
 | Component | Purpose | Chart Source |
 |-----------|---------|--------------|
-| AWS Load Balancer Controller | Ingress via ALB (EKS only) | `eks/aws-load-balancer-controller` |
-| ingress-nginx | Ingress controller (GKE, AKS) | `ingress-nginx/ingress-nginx` |
+| Gateway API CRDs | Kubernetes standard routing API | `gateway-api/standard-install` |
+| Envoy Gateway | Gateway API implementation | `envoyproxy/gateway-helm` |
+| AWS Load Balancer Controller | ALB management (EKS only) | `eks/aws-load-balancer-controller` |
 | cert-manager | TLS certificate automation | `jetstack/cert-manager` |
 | external-secrets | Sync secrets from cloud provider | `external-secrets/external-secrets` |
-| metrics-server | Pod autoscaling metrics | `metrics-server/metrics-server` |
+| external-dns | Automatic DNS record management | `external-dns/external-dns` |
+| Fluent Bit | Log collection (CNCF standard) | `fluent/fluent-bit` |
+| Loki | Log aggregation backend | `grafana/loki-stack` |
+| Prometheus + Grafana | Metrics, alerting, dashboards | `prometheus-community/kube-prometheus-stack` |
+| Argo CD | GitOps continuous delivery | `argo/argo-cd` |
+
+Uses [Gateway API](https://gateway-api.sigs.k8s.io/) instead of the [retired ingress-nginx](https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/).
 
 ## Usage
 

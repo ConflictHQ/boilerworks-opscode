@@ -1,0 +1,23 @@
+# Envoy Gateway — GCP
+# Gateway API implementation for GKE.
+#
+# GKE also has a native Gateway controller (gke-l7-rilb, gke-l7-global-external-managed)
+# which provisions Cloud Load Balancers via Gateway API resources. Use that for
+# production external traffic and Envoy Gateway for internal/mesh routing.
+#
+# https://gateway-api.sigs.k8s.io/
+# https://cloud.google.com/kubernetes-engine/docs/concepts/gateway-api
+
+config:
+  envoyGateway:
+    logging:
+      level:
+        default: info
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi

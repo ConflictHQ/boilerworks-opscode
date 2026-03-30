@@ -79,12 +79,14 @@ helm_repo_add() {
 
 helm_repo_add jetstack https://charts.jetstack.io
 helm_repo_add external-secrets https://charts.external-secrets.io
-helm_repo_add metrics-server https://kubernetes-sigs.github.io/metrics-server
+helm_repo_add external-dns https://kubernetes-sigs.github.io/external-dns
+helm_repo_add grafana https://grafana.github.io/helm-charts
+helm_repo_add prometheus-community https://prometheus-community.github.io/helm-charts
+helm_repo_add fluent https://fluent.github.io/helm-charts
+helm_repo_add argo https://argoproj.github.io/argo-helm
 
 if [[ "${CLOUD}" == "aws" ]]; then
   helm_repo_add eks https://aws.github.io/eks-charts
-else
-  helm_repo_add ingress-nginx https://kubernetes.github.io/ingress-nginx
 fi
 
 helm repo update >/dev/null 2>&1
@@ -135,7 +137,19 @@ helm_install cert-manager jetstack/cert-manager cert-manager \
 helm_install external-secrets external-secrets/external-secrets external-secrets \
   "${VALUES_DIR}/external-secrets.yaml"
 
-# 3. Ingress controller (cloud-specific)
+# 3. Gateway API + Envoy Gateway (all clouds)
+# Gateway API is the Kubernetes standard replacing Ingress.
+# https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/
+info "Installing Gateway API CRDs..."
+if ! ${DRY_RUN}; then
+  kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/download/standard-install.yaml 2>/dev/null \
+    && success "  Gateway API CRDs installed" || warn "  Gateway API CRDs may already exist"
+fi
+
+helm_install envoy-gateway oci://docker.io/envoyproxy/gateway-helm envoy-gateway-system \
+  "${VALUES_DIR}/envoy-gateway.yaml"
+
+# 4. ALB controller (EKS only — manages AWS ALB via Gateway API or Ingress)
 if [[ "${CLOUD}" == "aws" ]]; then
   if [[ -z "${ALB_ROLE_ARN}" ]]; then
     warn "No --alb-role-arn provided. ALB controller will not have IAM permissions."
@@ -145,12 +159,29 @@ if [[ "${CLOUD}" == "aws" ]]; then
     "${VALUES_DIR}/alb-controller.yaml" \
     --set "clusterName=${CLUSTER_NAME}" \
     --set "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn=${ALB_ROLE_ARN}"
-else
-  helm_install ingress-nginx ingress-nginx/ingress-nginx ingress-nginx \
-    "${VALUES_DIR}/ingress-nginx.yaml"
 fi
 
-# 4. metrics-server (skip if managed by cloud provider)
+# 5. external-dns (automatic DNS record management)
+helm_install external-dns external-dns/external-dns external-dns \
+  "${VALUES_DIR}/external-dns.yaml"
+
+# 6. Fluent Bit (log collection → Loki)
+helm_install fluent-bit fluent/fluent-bit logging \
+  "${VALUES_DIR}/fluent-bit.yaml"
+
+# 7. Loki (log aggregation backend)
+helm_install loki grafana/loki-stack loki \
+  "${VALUES_DIR}/loki-stack.yaml"
+
+# 8. Prometheus + Grafana (metrics, alerting, dashboards)
+helm_install kube-prometheus-stack prometheus-community/kube-prometheus-stack monitoring \
+  "${VALUES_DIR}/kube-prometheus-stack.yaml"
+
+# 9. Argo CD (GitOps continuous delivery)
+helm_install argocd argo/argo-cd argocd \
+  "${VALUES_DIR}/argo-cd.yaml"
+
+# 10. metrics-server (skip if managed by cloud provider)
 case "${CLOUD}" in
   aws)
     info "Skipping metrics-server (EKS manages this as an addon)"
@@ -171,17 +202,26 @@ if ! ${DRY_RUN}; then
   echo ""
   info "Verifying installations..."
 
-  kubectl get pods -n cert-manager --no-headers 2>/dev/null | head -3
-  kubectl get pods -n external-secrets --no-headers 2>/dev/null | head -3
+  for ns in cert-manager external-secrets envoy-gateway-system external-dns logging loki monitoring argocd; do
+    PODS=$(kubectl get pods -n "${ns}" --no-headers 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "${PODS}" -gt 0 ]]; then
+      success "  ${ns}: ${PODS} pod(s)"
+    else
+      warn "  ${ns}: no pods found"
+    fi
+  done
 
   if [[ "${CLOUD}" == "aws" ]]; then
-    kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller --no-headers 2>/dev/null | head -3
-  else
-    kubectl get pods -n ingress-nginx --no-headers 2>/dev/null | head -3
+    PODS=$(kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller --no-headers 2>/dev/null | wc -l | tr -d ' ')
+    success "  aws-load-balancer-controller: ${PODS} pod(s)"
   fi
 fi
 
 echo ""
 success "Base platform installed for ${CLOUD}/${ENV}"
 echo ""
-info "Next: create ClusterIssuer for cert-manager and ClusterSecretStore for external-secrets"
+info "Next steps:"
+echo "  1. Create ClusterIssuer for cert-manager (TLS)"
+echo "  2. Create ClusterSecretStore for external-secrets"
+echo "  3. Configure Argo CD app-of-apps for your workloads"
+echo "  4. Access Grafana: kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80"

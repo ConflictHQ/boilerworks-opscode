@@ -1,0 +1,77 @@
+# kube-prometheus-stack — AWS
+# Prometheus, Grafana, and Alertmanager for metrics and alerting.
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 20Gi
+    # ServiceMonitor selector — pick up all monitors in any namespace
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+
+grafana:
+  enabled: true
+  adminPassword: "" # Set via --set or sealed secret — do not commit a real password
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  # Add Loki as a datasource so logs are available alongside metrics
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki-stack:3100
+      access: proxy
+      isDefault: false
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 50m
+        memory: 128Mi
+  # Configure receivers after install — e.g. Slack, PagerDuty, email
+  # config:
+  #   route:
+  #     receiver: slack
+  #   receivers:
+  #     - name: slack
+  #       slack_configs:
+  #         - api_url: https://hooks.slack.com/services/xxx
+  #           channel: "#alerts"
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true
+
+# Disable components not relevant in managed EKS
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false

@@ -1,0 +1,21 @@
+# Envoy Gateway — AWS
+# Gateway API implementation for EKS.
+# Used alongside (not instead of) ALB controller — ALB handles external
+# traffic, Envoy Gateway handles internal routing via Gateway API.
+#
+# Replaces ingress-nginx. Gateway API is the Kubernetes standard going forward.
+# https://gateway-api.sigs.k8s.io/
+
+config:
+  envoyGateway:
+    logging:
+      level:
+        default: info
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi

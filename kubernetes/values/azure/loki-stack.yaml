@@ -1,0 +1,75 @@
+# loki-stack — Azure
+# Log aggregation with Loki (Azure Blob Storage backend) and Promtail.
+# Grafana is disabled here — use the instance from kube-prometheus-stack.
+
+loki:
+  enabled: true
+  persistence:
+    enabled: false # Chunks go to Azure Blob Storage
+
+  config:
+    auth_enabled: false
+
+    ingester:
+      chunk_idle_period: 3m
+      chunk_block_size: 262144
+      chunk_retain_period: 1m
+      lifecycler:
+        ring:
+          replication_factor: 1
+
+    schema_config:
+      configs:
+        - from: "2024-01-01"
+          store: tsdb
+          object_store: azure
+          schema: v13
+          index:
+            prefix: loki_index_
+            period: 24h
+
+    storage_config:
+      tsdb_shipper:
+        active_index_directory: /data/loki/tsdb-index
+        cache_location: /data/loki/tsdb-cache
+      azure:
+        account_name: "" # Azure Storage account name
+        container_name: "" # Blob container for Loki chunks
+        use_federated_token: true # Uses Workload Identity
+
+    compactor:
+      working_directory: /data/loki/compactor
+      compaction_interval: 10m
+
+    limits_config:
+      retention_period: 168h # 7 days for dev
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi
+
+  serviceAccount:
+    create: true
+    name: loki
+    annotations:
+      azure.workload.identity/client-id: "" # Managed identity with Storage Blob Data Contributor
+
+  podLabels:
+    azure.workload.identity/use: "true"
+
+promtail:
+  enabled: false  # Use Fluent Bit instead
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+grafana:
+  enabled: false

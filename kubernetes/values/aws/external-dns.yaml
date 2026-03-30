@@ -1,0 +1,35 @@
+# external-dns — AWS
+# Auto-creates Route53 DNS records from Kubernetes Ingress/Service resources.
+
+provider: aws
+
+# Limit to specific hosted zones (optional — leave empty for all zones)
+# domainFilters:
+#   - yourdomain.com
+
+txtOwnerId: "boilerworks-dev" # Unique per cluster to avoid record conflicts
+
+policy: upsert-only # "sync" will delete orphaned records — use with caution
+
+sources:
+  - ingress
+  - service
+
+serviceAccount:
+  create: true
+  name: external-dns
+  annotations:
+    eks.amazonaws.com/role-arn: "" # IRSA role with Route53 permissions
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: 50m
+    memory: 128Mi
+
+# Interval between DNS sync runs
+interval: 1m
+
+logLevel: info
