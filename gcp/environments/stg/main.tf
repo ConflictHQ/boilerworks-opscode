@@ -1,15 +1,10 @@
-# -----------------------------------------------------------------------------
-# Boilerworks — GCP Staging Environment
+# EXPERIMENTAL — In Progress
+# GCP support is under active development. Not yet validated against
+# a live GCP project. Contributions welcome.
 #
-# Staging mirrors production topology at reduced scale.
-# See dev/main.tf for planned services list.
-# -----------------------------------------------------------------------------
+# Staging environment — mirrors dev with higher scaling.
+# Copy dev/ and adjust values when ready to implement.
 
 terraform {
   required_version = ">= 1.5"
-
-  # backend "gcs" {
-  #   bucket = "tf-state-boilerworks"
-  #   prefix = "gcp/stg"
-  # }
 }

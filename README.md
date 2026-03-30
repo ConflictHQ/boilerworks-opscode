@@ -6,9 +6,9 @@ Multi-cloud infrastructure-as-code templates for deploying [Boilerworks](https:/
 
 | Cloud | Status | Compute | Database | Cache |
 |-------|--------|---------|----------|-------|
-| AWS | Full implementation | ECS Fargate | RDS / Aurora Serverless v2 | ElastiCache Redis 7 |
-| GCP | Structured placeholder | Cloud Run | Cloud SQL | Memorystore |
-| Azure | Structured placeholder | Container Apps | PostgreSQL Flexible | Azure Cache for Redis |
+| AWS | Production ready | ECS Fargate / EKS | RDS / Aurora Serverless v2 | ElastiCache Redis 7 |
+| GCP | Experimental | Cloud Run / GKE | Cloud SQL PostgreSQL | Memorystore Redis |
+| Azure | Experimental | Container Apps / AKS | PostgreSQL Flexible Server | Azure Cache for Redis |
 
 ## Quick Start
 

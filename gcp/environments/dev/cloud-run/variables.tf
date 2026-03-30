@@ -1,0 +1,14 @@
+variable "name" { type = string }
+variable "env" { type = string }
+variable "region" { type = string }
+variable "project_id" { type = string }
+variable "labels" { type = map(string) }
+variable "domain" { type = string }
+variable "network_id" { type = string }
+variable "subnet_id" { type = string }
+variable "dns_zone_name" { type = string }
+variable "container_image" { type = string }
+variable "db_connection_name" { type = string }
+variable "db_secret_id" { type = string }
+variable "app_secret_id" { type = string }
+variable "storage_bucket" { type = string }

@@ -1,31 +1,43 @@
+# EXPERIMENTAL — In Progress
+# GCP support is under active development. Not yet validated against
+# a live GCP project. Contributions welcome.
+
 # -----------------------------------------------------------------------------
 # Boilerworks — GCP Development Environment
-#
-# Planned services (not yet implemented):
-#   - Cloud Run (compute — ECS Fargate equivalent)
-#   - Cloud SQL for PostgreSQL (database)
-#   - Memorystore for Redis (cache)
-#   - Cloud Load Balancing (ALB equivalent)
-#   - Cloud DNS (Route53 equivalent)
-#   - Cloud Storage (S3 equivalent)
-#   - Secret Manager (Secrets Manager equivalent)
-#   - Cloud Logging + Cloud Monitoring (CloudWatch equivalent)
-#   - Cloud Armor (WAF)
-#   - VPC + Private Service Connect
-#
-# This file will be populated when GCP support is implemented.
-# Follow the same patterns as the AWS implementation:
-#   - Environment separation (dev/prd)
-#   - Reusable modules
-#   - Tagged resources (labels)
-#   - Least-privilege IAM
 # -----------------------------------------------------------------------------
 
 terraform {
-  required_version = ">= 1.5"
-
+  # Backend configured via -backend-config at init time.
+  # See gcp/config.env for project/region settings.
+  # Run: ./run.sh init gcp dev
+  #
   # backend "gcs" {
   #   bucket = "tf-state-boilerworks"
   #   prefix = "gcp/dev"
   # }
 }
+
+locals {
+  name         = "dev-boilerworks"
+  env          = "development"
+  region       = var.region
+  project_id   = var.project_id
+  service_name = "boilerworks"
+  owner        = "conflict"
+  ver          = "1.0"
+  domain       = "dev.boilerworks.net"
+  vpc_cidr     = "10.0.0.0/16"
+
+  labels = {
+    service     = local.service_name
+    environment = local.env
+    owner       = local.owner
+    managed-by  = "terraform"
+  }
+}
+
+data "google_project" "current" {
+  project_id = local.project_id
+}
+
+data "google_client_config" "current" {}

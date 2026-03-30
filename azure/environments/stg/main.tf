@@ -1,17 +1,10 @@
-# -----------------------------------------------------------------------------
-# Boilerworks — Azure Staging Environment
+# EXPERIMENTAL — In Progress
+# Azure support is under active development. Not yet validated against
+# a live Azure subscription. Contributions welcome.
 #
-# Staging mirrors production topology at reduced scale.
-# See dev/main.tf for planned services list.
-# -----------------------------------------------------------------------------
+# Staging environment — mirrors dev with higher scaling.
+# Copy dev/ and adjust values when ready to implement.
 
 terraform {
   required_version = ">= 1.5"
-
-  # backend "azurerm" {
-  #   resource_group_name  = "boilerworks-tfstate-rg"
-  #   storage_account_name = "boilerworkstfstate"
-  #   container_name       = "tfstate"
-  #   key                  = "azure/stg/terraform.tfstate"
-  # }
 }

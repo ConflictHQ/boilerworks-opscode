@@ -1,0 +1,14 @@
+variable "name" { type = string }
+variable "env" { type = string }
+variable "location" { type = string }
+variable "tags" { type = map(string) }
+variable "resource_group_name" { type = string }
+variable "container_apps_subnet_id" { type = string }
+variable "log_analytics_workspace_id" { type = string }
+variable "dns_zone_name" { type = string }
+variable "domain" { type = string }
+variable "key_vault_id" { type = string }
+variable "storage_account_id" { type = string }
+variable "container_image" { type = string }
+variable "container_cpu" { type = number }
+variable "container_memory" { type = string }
