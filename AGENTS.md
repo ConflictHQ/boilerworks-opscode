@@ -7,7 +7,6 @@ Each AI coding agent has its own entry point that follows the same pattern: read
 | Agent | Shim File | Notes |
 |-------|-----------|-------|
 | Claude | `CLAUDE.md` | Read by Claude Code, Cursor, Windsurf |
-| Gemini | `GEMINI.md` | Read by Gemini in IDEs, Jules |
 | Codex | `CODEX.md` | Read by OpenAI Codex, ChatGPT, Copilot Workspace |
 
 All shims point to `bootstrap.md` as the single source of truth for infrastructure context.
@@ -56,7 +55,7 @@ All shims point to `bootstrap.md` as the single source of truth for infrastructu
 
 ## Context Loading Order
 
-1. `CLAUDE.md` / `GEMINI.md` / `CODEX.md` — agent-specific conventions
+1. `CLAUDE.md` / `CODEX.md` — agent-specific conventions
 2. `bootstrap.md` — full infrastructure topology and setup guide
 3. `aws/config.env` — project configuration
 4. The specific files being modified
