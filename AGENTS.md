@@ -7,7 +7,8 @@ Each AI coding agent has its own entry point that follows the same pattern: read
 | Agent | Shim File | Notes |
 |-------|-----------|-------|
 | Claude | `CLAUDE.md` | Read by Claude Code, Cursor, Windsurf |
-| Codex | `CODEX.md` | Read by OpenAI Codex, ChatGPT, Copilot Workspace |
+| Calliope | `CALLIOPE.md` | Read by the CONFLICT Calliope coding harness |
+| OpenAI / Codex | `AGENTS.md` (this file) | Covers OpenAI Codex, ChatGPT, Copilot Workspace directly |
 
 All shims point to `bootstrap.md` as the single source of truth for infrastructure context.
 
@@ -55,7 +56,7 @@ All shims point to `bootstrap.md` as the single source of truth for infrastructu
 
 ## Context Loading Order
 
-1. `CLAUDE.md` / `CODEX.md` — agent-specific conventions
+1. `CLAUDE.md` / `CALLIOPE.md` / `AGENTS.md` — agent-specific conventions
 2. `bootstrap.md` — full infrastructure topology and setup guide
 3. `aws/config.env` — project configuration
 4. The specific files being modified

@@ -72,7 +72,8 @@ See [bootstrap.md](bootstrap.md) for the full infrastructure topology.
 - [bootstrap.md](bootstrap.md) — Infrastructure topology and first-time setup
 - [kubernetes/README.md](kubernetes/README.md) — Kubernetes base platform (Gateway API, observability, Argo CD)
 - [CLAUDE.md](CLAUDE.md) — Agent conventions and quick reference
-- [AGENTS.md](AGENTS.md) — Agent roles and configuration
+- [CALLIOPE.md](CALLIOPE.md) — Calliope harness shim
+- [AGENTS.md](AGENTS.md) — Agent roles and configuration (also the OpenAI/Codex shim)
 
 ---
 
