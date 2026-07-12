@@ -8,7 +8,7 @@
 
 terraform {
   # Backend configured via -backend-config at init time.
-  # See gcp/config.env for project/region settings.
+  # Project/region come from variables.tf (via -var flags or a tfvars file).
   # Run: ./run.sh init gcp dev
   #
   # backend "gcs" {

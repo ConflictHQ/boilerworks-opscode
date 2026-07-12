@@ -1,6 +1,6 @@
 # boilerworks-opscode
 
-Multi-cloud infrastructure-as-code templates for deploying [Boilerworks](https://github.com/conflict/boilerworks) applications. Currently AWS-only with GCP and Azure structured for future expansion.
+Multi-cloud infrastructure-as-code templates for deploying [Boilerworks](https://github.com/ConflictHQ/boilerworks) applications. AWS is production ready; GCP and Azure are experimental, with dev environments in-tree.
 
 ## What's Inside
 
@@ -58,6 +58,11 @@ aws/
   scripts/
     bootstrap.sh          # First-time infrastructure setup
     cold-boot.sh          # Post-deployment verification
+kubernetes/
+  base/                   # Cluster base platform for EKS/GKE/AKS: Gateway API,
+                          # Envoy Gateway, cert-manager, external-secrets,
+                          # external-dns, Fluent Bit, Loki, Prometheus, Argo CD
+  values/                 # Cloud-specific Helm values
 ```
 
 See [bootstrap.md](bootstrap.md) for the full infrastructure topology.
@@ -65,9 +70,9 @@ See [bootstrap.md](bootstrap.md) for the full infrastructure topology.
 ## Documentation
 
 - [bootstrap.md](bootstrap.md) — Infrastructure topology and first-time setup
+- [kubernetes/README.md](kubernetes/README.md) — Kubernetes base platform (Gateway API, observability, Argo CD)
 - [CLAUDE.md](CLAUDE.md) — Agent conventions and quick reference
 - [AGENTS.md](AGENTS.md) — Agent roles and configuration
-- [BUILD_SPEC.md](BUILD_SPEC.md) — Original build specification
 
 ---
 

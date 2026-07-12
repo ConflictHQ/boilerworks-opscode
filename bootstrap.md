@@ -1,6 +1,6 @@
 # Boilerworks Opscode — Infrastructure Bootstrap
 
-Multi-cloud infrastructure-as-code templates for deploying Boilerworks applications. AWS fully implemented with ECS Fargate and EKS Kubernetes runtimes. GCP and Azure structured for future expansion.
+Multi-cloud infrastructure-as-code templates for deploying Boilerworks applications. AWS fully implemented with ECS Fargate and EKS Kubernetes runtimes. GCP and Azure are experimental, with dev environments in-tree. A shared Kubernetes base platform lives in `kubernetes/` — see [kubernetes/README.md](kubernetes/README.md).
 
 ## Configuration
 
@@ -142,6 +142,14 @@ To add a second ECS service: copy the `module "ecs"` block in `container_runtime
 - EFS with KMS encryption for persistent storage
 - aws-auth ConfigMap bootstrap
 - CloudWatch log group
+
+After the cluster is up, install the shared Kubernetes base platform (Gateway API, Envoy Gateway, cert-manager, external-secrets, external-dns, Fluent Bit, Loki, Prometheus + Grafana, Argo CD):
+
+```bash
+./kubernetes/base/install.sh aws dev
+```
+
+See [kubernetes/README.md](kubernetes/README.md) for the full component list and cloud-specific values.
 
 ## Terraform Structure
 
