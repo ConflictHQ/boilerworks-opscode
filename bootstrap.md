@@ -74,6 +74,33 @@ This creates:
 ./aws/scripts/cold-boot.sh dev   # Verify deployment health
 ```
 
+### Hosted eZacto operating policy
+
+The commands above describe the generic Boilerworks template. For
+[ezacto-hosted](https://github.com/ConflictHQ/ezacto-hosted), the owner has set a
+stricter release rule across **every** Terraform root, including production,
+state/bootstrap, mail, and the management-account organization root:
+
+- Commit the complete desired state and merge it through a reviewed PR. Adopt
+  pre-existing resources with import blocks; do not reconcile by hand.
+- CI prepares an untargeted, full-state binary plan for one root at the current
+  `main` commit. Archive the plan privately with its run ID and SHA-256. Do not
+  use `-target` or a local apply to make a partial state look consistent.
+- The owner approves that exact run, commit, plan hash, and described resource
+  actions. Approval is required **after merge and before apply**. A changed
+  commit, expired plan, or changed state requires a new full plan and approval.
+- Only the guarded CI workflow applies the saved plan. CI must then read back
+  state and the live resources and retain the apply/audit result. A green plan
+  or PR check alone is not deployment evidence.
+- If a root lacks a CI planning/apply identity or approval workflow, build that
+  path first and leave the infrastructure change unapplied. This includes
+  management-account and registrar changes; the generic local commands above
+  are not a hosted release exception.
+
+The authoritative implementation and acceptance gates remain in
+[ezacto-hosted's bootstrap](https://github.com/ConflictHQ/ezacto-hosted/blob/main/bootstrap.md)
+and [v1 issue #4](https://github.com/ConflictHQ/ezacto-hosted/issues/4).
+
 ## Environment Topology
 
 ```
