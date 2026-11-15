@@ -70,6 +70,7 @@ See [bootstrap.md](bootstrap.md) for the full infrastructure topology.
 ## Documentation
 
 - [bootstrap.md](bootstrap.md) — Infrastructure topology and first-time setup
+- [docs/new-account-to-deployed-app.md](docs/new-account-to-deployed-app.md) - From a new account to a deployed boilerworks app on Astrolift
 - [kubernetes/README.md](kubernetes/README.md) — Kubernetes base platform (Gateway API, observability, Argo CD)
 - [CLAUDE.md](CLAUDE.md) — Agent conventions and quick reference
 - [CALLIOPE.md](CALLIOPE.md) — Calliope harness shim
